@@ -49,95 +49,88 @@ const Matches = () => {
     <div className="min-h-screen bg-gray-50 pb-20">
 
       {/* Header */}
-      <div className="bg-white px-6 py-5 border-b border-gray-100">
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Your Matches 💜</h1>
-        <p className="text-xs text-gray-400 font-semibold mt-0.5">
-          Ranked by lifestyle compatibility
-        </p>
+      <div className="bg-white px-4 py-4 border-b border-gray-100">
+        <h1 className="text-xl font-black text-gray-900 tracking-tight">Your Matches 💜</h1>
+        <p className="text-xs text-gray-400 font-semibold mt-0.5">Ranked by lifestyle compatibility</p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white px-6 py-3 border-b border-gray-100 flex gap-2 flex-wrap">
-        {['All', 'Students', 'Working Professionals', 'WFH', 'Pet Lovers', 'Non-smokers'].map(filter => (
+      <div className="bg-white px-4 py-3 border-b border-gray-100 flex gap-2 overflow-x-auto">
+        {['All', 'Students', 'Working Pro', 'WFH', 'Pet Lovers'].map(filter => (
           <button key={filter}
             onClick={() => setActiveFilter(filter)}
-            className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition ${activeFilter === filter
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition flex-shrink-0 ${activeFilter === filter
               ? 'border-red-500 text-red-500 bg-red-50'
-              : 'border-gray-200 text-gray-500 bg-white hover:border-red-300'}`}>
+              : 'border-gray-200 text-gray-500 bg-white'}`}>
             {filter}
           </button>
         ))}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 px-6 py-4">
+      <div className="grid grid-cols-3 gap-2 px-4 py-3">
         {[
-          { num: displayMatches.length, label: 'Total matches' },
+          { num: displayMatches.length, label: 'Matches' },
           { num: `${displayMatches[0]?.score || 95}%`, label: 'Top match' },
-          { num: '6', label: 'Preferences used' },
+          { num: '6', label: 'Preferences' },
         ].map(stat => (
-          <div key={stat.label} className="bg-white rounded-xl p-3 text-center border-2 border-gray-100">
-            <div className="text-lg font-black text-red-500">{stat.num}</div>
+          <div key={stat.label} className="bg-white rounded-xl p-2.5 text-center border-2 border-gray-100">
+            <div className="text-base font-black text-red-500">{stat.num}</div>
             <div className="text-xs text-gray-400 font-semibold mt-0.5">{stat.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Matches Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-6">
+      {/* Matches List */}
+      <div className="px-4 space-y-3">
         {displayMatches.map((match) => (
           <div key={match.id}
-            className="bg-white rounded-2xl border-2 border-gray-100 p-5 hover:shadow-md transition cursor-pointer">
+            className="bg-white rounded-2xl border-2 border-gray-100 p-4 hover:shadow-sm transition">
 
-            {/* Top section */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black flex-shrink-0 ${match.color || 'bg-red-50 text-red-500'}`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black flex-shrink-0 ${match.color || 'bg-red-50 text-red-500'}`}>
                 {match.full_name?.charAt(0) || '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-black text-gray-900">{match.full_name}, {match.age}</div>
-                <div className="text-xs text-gray-400 font-semibold mt-0.5">📍 {match.location}</div>
+                <div className="text-sm font-black text-gray-900 truncate">{match.full_name}, {match.age}</div>
+                <div className="text-xs text-gray-400 font-semibold">📍 {match.location}</div>
               </div>
-              <div className="text-2xl font-black text-red-500 flex-shrink-0">
+              <div className="text-xl font-black text-red-500 flex-shrink-0">
                 {match.score}%
               </div>
             </div>
 
             {/* Score Bar */}
-            <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
-              <div className="bg-red-500 h-1.5 rounded-full transition-all"
+            <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
+              <div className="bg-red-500 h-1.5 rounded-full"
                 style={{ width: `${match.score}%` }}>
               </div>
             </div>
 
             {/* Tags */}
-            <div className="flex flex-wrap gap-1.5 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-3">
               {(match.tags || []).map(tag => (
-                <span key={tag} className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-50 text-gray-500">
+                <span key={tag} className="text-xs font-bold px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500">
                   {tag}
                 </span>
               ))}
             </div>
 
-            {/* Bio */}
             {match.bio && (
-              <p className="text-xs text-gray-400 font-medium mb-4 line-clamp-2 leading-relaxed">
+              <p className="text-xs text-gray-400 font-medium mb-3 line-clamp-2 leading-relaxed">
                 {match.bio}
               </p>
             )}
 
-            {/* Budget */}
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-3">
               <span className="text-xs text-gray-400 font-semibold">Budget</span>
               <span className="text-xs font-black text-gray-900">
                 ₹{match.budget_min?.toLocaleString()} - ₹{match.budget_max?.toLocaleString()}/mo
               </span>
             </div>
 
-            {/* Buttons */}
             <div className="flex gap-2">
-              <button
-                onClick={() => handleLike(match.id)}
+              <button onClick={() => handleLike(match.id)}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-black text-xs transition">
                 ❤️ Like
               </button>
@@ -152,7 +145,7 @@ const Matches = () => {
 
       {matches.length === 0 && (
         <p className="text-center text-xs text-gray-400 font-semibold mt-4 pb-6">
-          👆 Sample matches shown — complete your preferences to see real matches!
+          👆 Sample matches — complete your preferences to see real matches!
         </p>
       )}
 
