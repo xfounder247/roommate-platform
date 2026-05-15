@@ -1,38 +1,61 @@
 const supabase = require('../config/supabase')
 
-// SIGN UP — create a new account
+// SIGN UP
 const signUp = async (req, res) => {
   const { email, password, full_name, age, gender, location } = req.body
 
+  // Validate required fields
+  if (!email || !password || !full_name) {
+    return res.status(400).json({ error: 'Email, password and full name are required.' })
+  }
+
   try {
-    // Create the user in Supabase Auth
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // Create user in Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name, age, gender, location }
+      }
+    })
 
     if (error) return res.status(400).json({ error: error.message })
 
-    // Save their profile info in our profiles table
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: data.user.id,
-        full_name,
-        age,
-        gender,
-        location
-      })
+    // Insert profile into profiles table
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          full_name,
+          age: parseInt(age),
+          gender,
+          location
+        })
 
-    if (profileError) return res.status(400).json({ error: profileError.message })
+      if (profileError) {
+        console.log('Profile error:', profileError.message)
+      }
+    }
 
-    res.status(201).json({ message: 'Account created! Please check your email.' })
+    res.status(201).json({
+      message: 'Account created successfully! Please check your email to verify.',
+      user: data.user
+    })
 
   } catch (err) {
+    console.log('Signup error:', err)
     res.status(500).json({ error: 'Something went wrong. Try again.' })
   }
 }
 
-// LOG IN — sign into existing account
+// LOG IN
 const logIn = async (req, res) => {
   const { email, password } = req.body
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' })
+  }
 
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -42,7 +65,6 @@ const logIn = async (req, res) => {
 
     if (error) return res.status(400).json({ error: error.message })
 
-    // Send back the token (used for all future requests)
     res.status(200).json({
       message: 'Logged in successfully!',
       token: data.session.access_token,
@@ -50,6 +72,7 @@ const logIn = async (req, res) => {
     })
 
   } catch (err) {
+    console.log('Login error:', err)
     res.status(500).json({ error: 'Something went wrong. Try again.' })
   }
 }

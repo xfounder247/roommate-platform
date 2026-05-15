@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import supabase from '../supabaseClient'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -15,13 +16,30 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, form)
-      localStorage.setItem('token', res.data.token)
-      setToken(res.data.token)
+      // Sign in directly with Supabase
+      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password
+      })
+
+      if (supabaseError) {
+        setError(supabaseError.message)
+        setLoading(false)
+        return
+      }
+
+      // Save token
+      const token = data.session.access_token
+      localStorage.setItem('token', token)
+      setToken(token)
+
+      // Navigate to matches
       navigate('/matches')
+
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid email or password')
+      setError('Something went wrong. Please try again.')
     }
     setLoading(false)
   }
