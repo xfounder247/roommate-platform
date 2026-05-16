@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import supabase from '../supabaseClient'
 
 const Listings = () => {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [listings, setListings] = useState([])
   const [city, setCity] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [saved, setSaved] = useState([])
   const [activeFilter, setActiveFilter] = useState('All')
+  const [uploading, setUploading] = useState(false)
+  const [uploadedPhotos, setUploadedPhotos] = useState([])
   const [form, setForm] = useState({
     title: '', description: '', rent: '', location: '',
     city: '', available_from: '', furnished: false, wifi: false, parking: false
@@ -24,12 +27,39 @@ const Listings = () => {
 
   useEffect(() => { fetchListings() }, [city])
 
+  const uploadPhoto = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `listing-${Date.now()}.${fileExt}`
+      const { error } = await supabase.storage
+        .from('listings')
+        .upload(fileName, file, { upsert: true })
+
+      if (error) throw error
+
+      const { data } = supabase.storage
+        .from('listings')
+        .getPublicUrl(fileName)
+
+      setUploadedPhotos(prev => [...prev, data.publicUrl])
+      alert('Photo uploaded! ✅')
+    } catch {
+      alert('Could not upload photo.')
+    }
+    setUploading(false)
+  }
+
   const handleCreate = async (e) => {
     e.preventDefault()
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/listings`, form, { headers })
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/listings`,
+        { ...form, photos: uploadedPhotos }, { headers })
       alert('Listing created!')
       setShowForm(false)
+      setUploadedPhotos([])
       fetchListings()
     } catch {
       alert('Could not create listing.')
@@ -148,6 +178,27 @@ const Listings = () => {
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-100 bg-gray-50 focus:outline-none focus:border-red-400 text-xs text-gray-700 transition"
                 required />
             </div>
+
+            {/* Photo Upload */}
+            <div>
+              <label className="block text-xs font-black text-gray-900 mb-1 tracking-wide">ROOM PHOTOS</label>
+              <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 cursor-pointer">
+                <span className="text-lg">📷</span>
+                <span className="text-xs font-bold text-gray-500">
+                  {uploading ? 'Uploading...' : `Tap to add photo (${uploadedPhotos.length} added)`}
+                </span>
+                <input type="file" accept="image/*" onChange={uploadPhoto} className="hidden" />
+              </label>
+              {uploadedPhotos.length > 0 && (
+                <div className="flex gap-2 mt-2 overflow-x-auto">
+                  {uploadedPhotos.map((url, i) => (
+                    <img key={i} src={url} alt="room"
+                      className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-4">
               {['furnished', 'wifi', 'parking'].map(feature => (
                 <label key={feature} className="flex items-center gap-1.5 cursor-pointer">
@@ -170,17 +221,23 @@ const Listings = () => {
       <div className="grid grid-cols-2 gap-3 px-4">
         {displayListings.map((listing, i) => (
           <div key={listing.id || i}
-            className="bg-white rounded-2xl overflow-hidden border-2 border-gray-100 hover:shadow-sm transition cursor-pointer">
-            <div className={`h-28 flex items-center justify-center text-4xl relative ${bgs[(listing.idx !== undefined ? listing.idx : i) % bgs.length]}`}>
-              {emojis[(listing.idx !== undefined ? listing.idx : i) % emojis.length]}
-              <span className={`absolute top-2 left-2 text-white text-xs font-black px-1.5 py-0.5 rounded ${listing.tagColor || 'bg-red-500'}`}>
-                {listing.tag || 'New'}
-              </span>
-              <button onClick={() => toggleSave(listing.id || i)}
-                className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm text-xs">
-                {saved.includes(listing.id || i) ? '❤️' : '🤍'}
-              </button>
-            </div>
+            className="bg-white rounded-2xl overflow-hidden border-2 border-gray-100 cursor-pointer">
+            {/* Show real photo if available */}
+            {listing.photos?.[0] ? (
+              <img src={listing.photos[0]} alt="room"
+                className="w-full h-28 object-cover" />
+            ) : (
+              <div className={`h-28 flex items-center justify-center text-4xl relative ${bgs[(listing.idx !== undefined ? listing.idx : i) % bgs.length]}`}>
+                {emojis[(listing.idx !== undefined ? listing.idx : i) % emojis.length]}
+                <span className={`absolute top-2 left-2 text-white text-xs font-black px-1.5 py-0.5 rounded ${listing.tagColor || 'bg-red-500'}`}>
+                  {listing.tag || 'New'}
+                </span>
+              </div>
+            )}
+            <button onClick={() => toggleSave(listing.id || i)}
+              className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm text-xs">
+              {saved.includes(listing.id || i) ? '❤️' : '🤍'}
+            </button>
             <div className="p-3">
               <div className="text-xs font-black text-gray-900 mb-0.5 truncate">
                 {listing.city || listing.title}
