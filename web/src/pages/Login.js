@@ -9,6 +9,9 @@ const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotSent, setForgotSent] = useState(false)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -36,6 +39,25 @@ const Login = () => {
     setLoading(false)
   }
 
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) {
+      alert('Please enter your email!')
+      return
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: 'https://roompartner.in/reset-password'
+      })
+      if (error) {
+        alert(error.message)
+        return
+      }
+      setForgotSent(true)
+    } catch {
+      alert('Something went wrong. Try again.')
+    }
+  }
+
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -44,6 +66,60 @@ const Login = () => {
       }
     })
     if (error) setError(error.message)
+  }
+
+  // Forgot Password Screen
+  if (showForgot) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="bg-red-500 px-4 py-8 text-center">
+          <div className="text-2xl font-black text-white tracking-tight mb-2">
+            RoomMatch
+          </div>
+          <h1 className="text-xl font-black text-white leading-tight mb-2">
+            Reset Password 🔑
+          </h1>
+          <p className="text-xs text-red-100 font-medium">
+            We'll send you a reset link
+          </p>
+        </div>
+
+        <div className="flex-1 bg-white rounded-t-3xl -mt-4 px-4 py-8">
+          {forgotSent ? (
+            <div className="text-center py-8">
+              <div className="text-5xl mb-4">📧</div>
+              <h2 className="text-lg font-black text-gray-900 mb-2">Check your email!</h2>
+              <p className="text-sm text-gray-400 font-medium mb-6">
+                We sent a password reset link to {forgotEmail}
+              </p>
+              <button onClick={() => { setShowForgot(false); setForgotSent(false) }}
+                className="w-full bg-red-500 text-white py-3 rounded-xl font-black text-sm">
+                Back to Login
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-black text-gray-900 mb-1.5 tracking-wide">EMAIL</label>
+                <input type="email" placeholder="you@example.com"
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 bg-gray-50 focus:outline-none focus:border-red-400 text-sm text-gray-700 transition mb-4"
+                />
+                <button onClick={handleForgotPassword}
+                  className="w-full bg-red-500 text-white py-3.5 rounded-xl font-black text-sm transition mb-4">
+                  Send Reset Link →
+                </button>
+                <button onClick={() => setShowForgot(false)}
+                  className="w-full bg-gray-50 text-gray-600 py-3 rounded-xl font-bold text-sm transition border-2 border-gray-100">
+                  Back to Login
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -89,9 +165,11 @@ const Login = () => {
           </div>
 
           <div className="flex justify-end">
-            <span className="text-xs text-red-500 font-black cursor-pointer hover:underline">
+            <button type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-xs text-red-500 font-black hover:underline">
               Forgot password?
-            </span>
+            </button>
           </div>
 
           <button type="submit" disabled={loading}
