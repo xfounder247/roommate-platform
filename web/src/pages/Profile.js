@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
+import supabase from '../supabaseClient'
 
 const Profile = () => {
-  const { token, logout } = useAuth()
+  const { token, logout, user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [prefs, setPrefs] = useState({
     sleep_schedule: '', cleanliness: '',
@@ -11,12 +12,15 @@ const Profile = () => {
   })
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
+  const [uploading, setUploading] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState(null)
   const headers = { Authorization: `Bearer ${token}` }
 
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/api/profile`, { headers })
       .then(res => {
         setProfile(res.data)
+        setPhotoUrl(res.data.photo_url)
         if (res.data.preferences?.[0]) setPrefs(res.data.preferences[0])
       })
       .catch(() => {
@@ -32,6 +36,37 @@ const Profile = () => {
         })
       })
   }, [])
+
+  const uploadPhoto = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user?.id || 'user'}-${Date.now()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName)
+
+      const publicUrl = data.publicUrl
+      setPhotoUrl(publicUrl)
+
+      // Update profile with new photo URL
+      await axios.put(`${process.env.REACT_APP_API_URL}/api/profile`,
+        { photo_url: publicUrl }, { headers })
+
+      alert('Photo uploaded successfully! ✅')
+    } catch (err) {
+      alert('Could not upload photo. Try again.')
+    }
+    setUploading(false)
+  }
 
   const savePreferences = async () => {
     try {
@@ -56,9 +91,20 @@ const Profile = () => {
       {/* Profile Header */}
       <div className="bg-red-500 px-4 pt-6 pb-14">
         <div className="flex items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl font-black text-red-500 flex-shrink-0">
-            {profile.full_name?.charAt(0) || '?'}
+          {/* Photo with upload */}
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl font-black text-red-500 overflow-hidden">
+              {photoUrl
+                ? <img src={photoUrl} alt="profile" className="w-full h-full object-cover" />
+                : profile.full_name?.charAt(0) || '?'
+              }
+            </div>
+            <label className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-sm">
+              <span className="text-xs">📷</span>
+              <input type="file" accept="image/*" onChange={uploadPhoto} className="hidden" />
+            </label>
           </div>
+
           <div>
             <h1 className="text-lg font-black text-white">{profile.full_name}</h1>
             <p className="text-xs text-red-100 font-semibold mt-0.5">
@@ -71,6 +117,9 @@ const Profile = () => {
             </div>
           </div>
         </div>
+        {uploading && (
+          <p className="text-xs text-white text-center mt-2 font-bold">Uploading photo... ⏳</p>
+        )}
       </div>
 
       {/* Stats */}
@@ -186,7 +235,6 @@ const Profile = () => {
                 <span className="text-gray-300 font-black">›</span>
               </div>
             ))}
-
             <button onClick={logout}
               className="w-full bg-red-50 hover:bg-red-100 text-red-500 border-2 border-red-100 py-3 rounded-xl font-black text-sm transition mt-2">
               Logout
