@@ -6,6 +6,7 @@ import supabase from '../supabaseClient'
 const Listings = () => {
   const { token, user } = useAuth()
   const [listings, setListings] = useState([])
+  const [filtered, setFiltered] = useState([])
   const [city, setCity] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [saved, setSaved] = useState([])
@@ -18,14 +19,56 @@ const Listings = () => {
   })
   const headers = { Authorization: `Bearer ${token}` }
 
+  const sampleListings = [
+    { id: 's1', city: 'Koramangala, Bangalore', title: 'Spacious 2BHK', detail: '2BHK · Furnished · WiFi', rent: 12000, rating: '4.9', tag: '95% match', tagColor: 'bg-red-500', idx: 0, amenities: ['🛋️ Furnished', '📶 WiFi', '🚗 Parking'], furnished: true, wifi: true, parking: true },
+    { id: 's2', city: 'Bandra West, Mumbai', title: 'Cozy 1BHK', detail: '1BHK · Semi-furnished', rent: 18500, rating: '4.7', tag: 'New', tagColor: 'bg-gray-900', idx: 1, amenities: ['🛋️ Semi-furnished', '📶 WiFi'], furnished: true, wifi: true, parking: false },
+    { id: 's3', city: 'Hauz Khas, Delhi', title: 'Modern 3BHK', detail: '3BHK · Fully furnished', rent: 9500, rating: '4.8', tag: '88% match', tagColor: 'bg-red-500', idx: 2, amenities: ['🛋️ Furnished', '🚗 Parking'], furnished: true, wifi: false, parking: true },
+    { id: 's4', city: 'Hitech City, Hyderabad', title: 'Premium 2BHK', detail: '2BHK · Furnished · Gym', rent: 14000, rating: '4.6', tag: 'New', tagColor: 'bg-gray-900', idx: 3, amenities: ['🛋️ Furnished', '📶 WiFi', '🏋️ Gym'], furnished: true, wifi: true, parking: false },
+    { id: 's5', city: 'Koramangala, Bangalore', title: 'Budget 1BHK', detail: '1BHK · Semi-furnished', rent: 8000, rating: '4.5', tag: 'New', tagColor: 'bg-gray-900', idx: 4, amenities: ['📶 WiFi'], furnished: false, wifi: true, parking: false },
+    { id: 's6', city: 'Connaught Place, Delhi', title: 'Luxury Studio', detail: 'Studio · Fully furnished', rent: 22000, rating: '4.9', tag: 'Premium', tagColor: 'bg-red-500', idx: 5, amenities: ['🛋️ Furnished', '📶 WiFi', '🚗 Parking'], furnished: true, wifi: true, parking: true },
+  ]
+
   const fetchListings = () => {
-    const url = city
-      ? `${process.env.REACT_APP_API_URL}/api/listings?city=${city}`
-      : `${process.env.REACT_APP_API_URL}/api/listings`
-    axios.get(url, { headers }).then(res => setListings(res.data)).catch(() => {})
+    axios.get(`${process.env.REACT_APP_API_URL}/api/listings`, { headers })
+      .then(res => {
+        const data = res.data.length > 0 ? res.data : sampleListings
+        setListings(data)
+        setFiltered(data)
+      })
+      .catch(() => {
+        setListings(sampleListings)
+        setFiltered(sampleListings)
+      })
   }
 
-  useEffect(() => { fetchListings() }, [city])
+  useEffect(() => { fetchListings() }, [])
+
+  // Search & Filter Logic
+  useEffect(() => {
+    let result = listings
+
+    // Search by city
+    if (city) {
+      result = result.filter(l =>
+        (l.city || '').toLowerCase().includes(city.toLowerCase()) ||
+        (l.title || '').toLowerCase().includes(city.toLowerCase()) ||
+        (l.location || '').toLowerCase().includes(city.toLowerCase())
+      )
+    }
+
+    // Filter chips
+    if (activeFilter === 'Under ₹10k') {
+      result = result.filter(l => parseInt(l.rent) < 10000)
+    } else if (activeFilter === '₹10-20k') {
+      result = result.filter(l => parseInt(l.rent) >= 10000 && parseInt(l.rent) <= 20000)
+    } else if (activeFilter === 'Furnished') {
+      result = result.filter(l => l.furnished === true)
+    } else if (activeFilter === 'WiFi') {
+      result = result.filter(l => l.wifi === true)
+    }
+
+    setFiltered(result)
+  }, [city, activeFilter, listings])
 
   const uploadPhoto = async (e) => {
     const file = e.target.files[0]
@@ -37,13 +80,8 @@ const Listings = () => {
       const { error } = await supabase.storage
         .from('listings')
         .upload(fileName, file, { upsert: true })
-
       if (error) throw error
-
-      const { data } = supabase.storage
-        .from('listings')
-        .getPublicUrl(fileName)
-
+      const { data } = supabase.storage.from('listings').getPublicUrl(fileName)
       setUploadedPhotos(prev => [...prev, data.publicUrl])
       alert('Photo uploaded! ✅')
     } catch {
@@ -73,15 +111,6 @@ const Listings = () => {
   const emojis = ['🏠', '🏢', '🏘', '🏗', '🏡', '🏬']
   const bgs = ['bg-red-50', 'bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-purple-50', 'bg-pink-50']
 
-  const sampleListings = [
-    { id: 's1', city: 'Koramangala, Bangalore', detail: '2BHK · Furnished · WiFi', rent: '12,000', rating: '4.9', tag: '95% match', tagColor: 'bg-red-500', idx: 0, amenities: ['🛋️ Furnished', '📶 WiFi', '🚗 Parking'] },
-    { id: 's2', city: 'Bandra West, Mumbai', detail: '1BHK · Semi-furnished', rent: '18,500', rating: '4.7', tag: 'New', tagColor: 'bg-gray-900', idx: 1, amenities: ['🛋️ Semi-furnished', '📶 WiFi'] },
-    { id: 's3', city: 'Hauz Khas, Delhi', detail: '3BHK · Fully furnished', rent: '9,500', rating: '4.8', tag: '88% match', tagColor: 'bg-red-500', idx: 2, amenities: ['🛋️ Furnished', '🚗 Parking'] },
-    { id: 's4', city: 'Hitech City, Hyderabad', detail: '2BHK · Furnished · Gym', rent: '14,000', rating: '4.6', tag: 'New', tagColor: 'bg-gray-900', idx: 3, amenities: ['🛋️ Furnished', '📶 WiFi', '🏋️ Gym'] },
-  ]
-
-  const displayListings = listings.length > 0 ? listings : sampleListings
-
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
 
@@ -90,7 +119,7 @@ const Listings = () => {
         <div>
           <h1 className="text-xl font-black text-gray-900 tracking-tight">Room Listings 🏠</h1>
           <p className="text-xs text-gray-400 font-semibold mt-0.5">
-            {displayListings.length} rooms available
+            {filtered.length} rooms found
           </p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
@@ -99,16 +128,19 @@ const Listings = () => {
         </button>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search */}
       <div className="bg-white px-4 py-3 border-b border-gray-100">
         <div className="flex items-center bg-gray-50 rounded-xl px-3 py-2.5 gap-2 border-2 border-gray-100 mb-3">
           <span className="text-red-500">🔍</span>
           <input
-            placeholder="Search by city or area..."
+            placeholder="Search by city, area or title..."
             value={city}
             onChange={e => setCity(e.target.value)}
             className="border-none outline-none text-sm text-gray-700 bg-transparent flex-1"
           />
+          {city && (
+            <button onClick={() => setCity('')} className="text-gray-400 font-black text-sm">✕</button>
+          )}
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {['All', 'Under ₹10k', '₹10-20k', 'Furnished', 'WiFi'].map(filter => (
@@ -126,7 +158,7 @@ const Listings = () => {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 px-4 py-3">
         {[
-          { num: '2,400+', label: 'Listings' },
+          { num: `${filtered.length}`, label: 'Found' },
           { num: '95%', label: 'Verified' },
           { num: '4.8★', label: 'Rating' },
         ].map(stat => (
@@ -151,25 +183,20 @@ const Listings = () => {
               ].map(field => (
                 <div key={field.key}>
                   <label className="block text-xs font-black text-gray-900 mb-1 tracking-wide">{field.label}</label>
-                  <input
-                    placeholder={field.placeholder}
-                    value={form[field.key]}
+                  <input placeholder={field.placeholder} value={form[field.key]}
                     onChange={e => setForm({ ...form, [field.key]: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-100 bg-gray-50 focus:outline-none focus:border-red-400 text-xs text-gray-700 transition"
-                    required
-                  />
+                    required />
                 </div>
               ))}
             </div>
             <div>
               <label className="block text-xs font-black text-gray-900 mb-1 tracking-wide">DESCRIPTION</label>
-              <textarea
-                placeholder="Describe your room..."
+              <textarea placeholder="Describe your room..."
                 value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-100 bg-gray-50 focus:outline-none focus:border-red-400 text-xs text-gray-700 transition"
-                rows={3}
-              />
+                rows={3} />
             </div>
             <div>
               <label className="block text-xs font-black text-gray-900 mb-1 tracking-wide">AVAILABLE FROM</label>
@@ -178,8 +205,6 @@ const Listings = () => {
                 className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-100 bg-gray-50 focus:outline-none focus:border-red-400 text-xs text-gray-700 transition"
                 required />
             </div>
-
-            {/* Photo Upload */}
             <div>
               <label className="block text-xs font-black text-gray-900 mb-1 tracking-wide">ROOM PHOTOS</label>
               <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 cursor-pointer">
@@ -192,13 +217,11 @@ const Listings = () => {
               {uploadedPhotos.length > 0 && (
                 <div className="flex gap-2 mt-2 overflow-x-auto">
                   {uploadedPhotos.map((url, i) => (
-                    <img key={i} src={url} alt="room"
-                      className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                    <img key={i} src={url} alt="room" className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
                   ))}
                 </div>
               )}
             </div>
-
             <div className="flex gap-4">
               {['furnished', 'wifi', 'parking'].map(feature => (
                 <label key={feature} className="flex items-center gap-1.5 cursor-pointer">
@@ -217,23 +240,34 @@ const Listings = () => {
         </div>
       )}
 
+      {/* No results */}
+      {filtered.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-5xl mb-3">🔍</div>
+          <p className="text-sm font-black text-gray-900 mb-1">No listings found</p>
+          <p className="text-xs text-gray-400 font-semibold">Try a different search or filter</p>
+          <button onClick={() => { setCity(''); setActiveFilter('All') }}
+            className="mt-4 bg-red-500 text-white px-6 py-2.5 rounded-xl font-black text-xs">
+            Clear filters
+          </button>
+        </div>
+      )}
+
       {/* Listings Grid */}
       <div className="grid grid-cols-2 gap-3 px-4">
-        {displayListings.map((listing, i) => (
+        {filtered.map((listing, i) => (
           <div key={listing.id || i}
-            className="bg-white rounded-2xl overflow-hidden border-2 border-gray-100 cursor-pointer">
-            {/* Show real photo if available */}
+            className="bg-white rounded-2xl overflow-hidden border-2 border-gray-100 cursor-pointer relative">
             {listing.photos?.[0] ? (
-              <img src={listing.photos[0]} alt="room"
-                className="w-full h-28 object-cover" />
+              <img src={listing.photos[0]} alt="room" className="w-full h-28 object-cover" />
             ) : (
-              <div className={`h-28 flex items-center justify-center text-4xl relative ${bgs[(listing.idx !== undefined ? listing.idx : i) % bgs.length]}`}>
+              <div className={`h-28 flex items-center justify-center text-4xl ${bgs[(listing.idx !== undefined ? listing.idx : i) % bgs.length]}`}>
                 {emojis[(listing.idx !== undefined ? listing.idx : i) % emojis.length]}
-                <span className={`absolute top-2 left-2 text-white text-xs font-black px-1.5 py-0.5 rounded ${listing.tagColor || 'bg-red-500'}`}>
-                  {listing.tag || 'New'}
-                </span>
               </div>
             )}
+            <span className={`absolute top-2 left-2 text-white text-xs font-black px-1.5 py-0.5 rounded ${listing.tagColor || 'bg-red-500'}`}>
+              {listing.tag || 'New'}
+            </span>
             <button onClick={() => toggleSave(listing.id || i)}
               className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm text-xs">
               {saved.includes(listing.id || i) ? '❤️' : '🤍'}
@@ -256,7 +290,7 @@ const Listings = () => {
               </div>
               <div className="flex justify-between items-center mb-2">
                 <div className="text-sm font-black text-gray-900">
-                  ₹{listing.rent}<span className="text-xs font-normal text-gray-400">/mo</span>
+                  ₹{parseInt(listing.rent).toLocaleString()}<span className="text-xs font-normal text-gray-400">/mo</span>
                 </div>
                 <div className="text-xs font-black text-red-500">{listing.rating || '4.8'}★</div>
               </div>
@@ -267,12 +301,6 @@ const Listings = () => {
           </div>
         ))}
       </div>
-
-      {listings.length === 0 && (
-        <p className="text-center text-xs text-gray-400 font-semibold mt-3 pb-4">
-          👆 Sample listings — add your own above!
-        </p>
-      )}
 
     </div>
   )
