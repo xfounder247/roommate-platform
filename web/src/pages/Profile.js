@@ -5,6 +5,7 @@ import supabase from '../supabaseClient'
 
 const Profile = () => {
   const { token, logout, user } = useAuth()
+  const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
   const [prefs, setPrefs] = useState({
     sleep_schedule: '', cleanliness: '',
